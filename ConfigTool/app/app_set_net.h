@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QtGlobal>
+#include <QMessageBox>
 #include "app/app_serial.h"
 #include "app/app_protocol_set_net.h"
 

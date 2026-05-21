@@ -22,8 +22,8 @@
   <widget class="QPushButton" name="get_info">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>260</y>
+     <x>10</x>
+     <y>300</y>
      <width>101</width>
      <height>23</height>
     </rect>
@@ -35,8 +35,8 @@
   <widget class="QPushButton" name="set_info">
    <property name="geometry">
     <rect>
-     <x>130</x>
-     <y>260</y>
+     <x>110</x>
+     <y>300</y>
      <width>101</width>
      <height>23</height>
     </rect>
@@ -48,14 +48,53 @@
   <widget class="QWidget" name="">
    <property name="geometry">
     <rect>
-     <x>21</x>
-     <y>10</y>
-     <width>188</width>
-     <height>220</height>
+     <x>20</x>
+     <y>260</y>
+     <width>119</width>
+     <height>24</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout_8">
     <item>
+     <widget class="QLabel" name="label_6">
+      <property name="minimumSize">
+       <size>
+        <width>45</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>IP方式</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QComboBox" name="ip_type">
+      <item>
+       <property name="text">
+        <string>静态IP</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>动态IP</string>
+       </property>
+      </item>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QWidget" name="">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>12</y>
+     <width>163</width>
+     <height>236</height>
+    </rect>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QLabel" name="label_7">
@@ -82,7 +121,7 @@
       </item>
      </layout>
     </item>
-    <item>
+    <item row="1" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
        <widget class="QLabel" name="label_8">
@@ -102,27 +141,7 @@
       </item>
      </layout>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
-      <item>
-       <widget class="QLabel" name="label">
-        <property name="minimumSize">
-         <size>
-          <width>45</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>MAC</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="mac"/>
-      </item>
-     </layout>
-    </item>
-    <item>
+    <item row="2" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_4">
       <item>
        <widget class="QLabel" name="label_2">
@@ -142,27 +161,7 @@
       </item>
      </layout>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_5">
-      <item>
-       <widget class="QLabel" name="label_3">
-        <property name="minimumSize">
-         <size>
-          <width>45</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>SN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="sn"/>
-      </item>
-     </layout>
-    </item>
-    <item>
+    <item row="3" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_6">
       <item>
        <widget class="QLabel" name="label_4">
@@ -182,7 +181,47 @@
       </item>
      </layout>
     </item>
-    <item>
+    <item row="4" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="minimumSize">
+         <size>
+          <width>45</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>MAC</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="mac"/>
+      </item>
+     </layout>
+    </item>
+    <item row="5" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="minimumSize">
+         <size>
+          <width>45</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>SN</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="sn"/>
+      </item>
+     </layout>
+    </item>
+    <item row="6" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_7">
       <item>
        <widget class="QLabel" name="label_5">
@@ -202,10 +241,10 @@
       </item>
      </layout>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_8">
+    <item row="7" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_9">
       <item>
-       <widget class="QLabel" name="label_6">
+       <widget class="QLabel" name="label_9">
         <property name="minimumSize">
          <size>
           <width>45</width>
@@ -213,23 +252,12 @@
          </size>
         </property>
         <property name="text">
-         <string>IP方式</string>
+         <string>Ver</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="ip_type">
-        <item>
-         <property name="text">
-          <string>静态IP</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>动态IP</string>
-         </property>
-        </item>
-       </widget>
+       <widget class="QLineEdit" name="ver"/>
       </item>
      </layout>
     </item>

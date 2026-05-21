@@ -383,8 +383,11 @@ void AppSetConfig::CreateListWindow()
         m_sceneListWidget->move(newX, newY);
 
         connect(m_sceneListWidget, &QWidget::destroyed, this, [this]() {m_sceneListWidget = nullptr;}); // 当窗口关闭时,将指针置空
-        connect(m_sceneListWidget, &AppAllList::requestSendSceneData,  m_protocol_set_config, &AppProtocolSetConfig::sendSceneData);
-        connect(m_sceneListWidget, &AppAllList::requestSendBindData, m_protocol_set_config, &AppProtocolSetConfig::sendBindData);
+        connect(m_sceneListWidget, &AppAllList::requestSendSceneData,  m_protocol_set_config, &AppProtocolSetConfig::sendSceneData);    // 下发设备场景
+        connect(m_sceneListWidget, &AppAllList::requestSendBindData, m_protocol_set_config, &AppProtocolSetConfig::sendBindData);       // 下发设备绑定
+
+        connect(m_sceneListWidget, &AppAllList::requestClearSceneData,  m_protocol_set_config, &AppProtocolSetConfig::sendClearSceneData); // 删除设备场景
+        connect(m_sceneListWidget, &AppAllList::requestClearBindData, m_protocol_set_config, &AppProtocolSetConfig::sendClearBindData);    // 删除设备绑定
 
         connect(m_sceneListWidget, &AppAllList::requestEditScene, this, &AppSetConfig::create_scene);
 

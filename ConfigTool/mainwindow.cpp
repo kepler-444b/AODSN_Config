@@ -58,6 +58,35 @@ void MainWindow::on_debug_triggered()
     DisplayWidget->activateWindow();
 }
 
+// 软件版本
+void MainWindow::on_ver_triggered()
+{
+    QString currentVersion = "v0.1";
+    QString downloadUrl = "https://gitee.com/jokershudongsheng/ADSON_Release/releases";
+
+    QString infoText = QString(
+                "<h3>奥迪信设置工具</h3>"
+                "<p><b>当前版本：</b>%1</p>"
+                "<p><b>最新版本下载地址：</b><br>"
+                "<a href=\"%2\">点击前往下载最新版本</a></p>"
+                "<p style='font-size: 11px; color: gray;'>Copyright © 2026 shudongsheng. All rights reserved.</p>"
+                ).arg(currentVersion).arg(downloadUrl);
+
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("版本信息");
+    msgBox.setTextFormat(Qt::RichText);
+    msgBox.setText(infoText);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.button(QMessageBox::Ok)->setText("确定");
+
+    QDialogButtonBox *buttonBox = msgBox.findChild<QDialogButtonBox *>();
+    if (buttonBox) {
+        buttonBox->setCenterButtons(true);
+    }
+    msgBox.exec();
+}
+
 // 功能切换
 void MainWindow::on_listWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
@@ -85,7 +114,7 @@ void MainWindow::on_listWidget_currentItemChanged(QListWidgetItem *current, QLis
         connect(SerialWidget, &AppSerial::sigRecvData, m_protocol, &AppProtocolSetAddr::RecvDataParse, Qt::UniqueConnection);
     }
     if (current->text() == "设置配置") {
-//        connect(SetConfigWidget, &AppSetConfig::sigSendDataToSerial, SerialWidget, &AppSerial::SerialSendData);
+        //        connect(SetConfigWidget, &AppSetConfig::sigSendDataToSerial, SerialWidget, &AppSerial::SerialSendData);
     }
 
 
@@ -94,3 +123,5 @@ void MainWindow::on_listWidget_currentItemChanged(QListWidgetItem *current, QLis
     int row = ui->listWidget->row(current);
     ui->stackedWidget->setCurrentIndex(row);
 }
+
+

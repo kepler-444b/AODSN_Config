@@ -162,7 +162,7 @@
      <x>0</x>
      <y>0</y>
      <width>1030</width>
-     <height>23</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -171,12 +171,30 @@
     </property>
     <addaction name="debug"/>
    </widget>
+   <widget class="QMenu" name="help">
+    <property name="title">
+     <string>帮助</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="about">
+    <property name="title">
+     <string>关于</string>
+    </property>
+    <addaction name="ver"/>
+   </widget>
    <addaction name="menu"/>
+   <addaction name="help"/>
+   <addaction name="about"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="debug">
    <property name="text">
     <string>调试窗口</string>
+   </property>
+  </action>
+  <action name="ver">
+   <property name="text">
+    <string>软件版本</string>
    </property>
   </action>
  </widget>

@@ -21,9 +21,9 @@ static uint8_t getKeyBitMask(int keyIndex, int keyCount)
     {
         switch (keyIndex)
         {
-            case 0: return (1u << 0) | (1u << 1);
-            case 1: return (1u << 2) | (1u << 3);
-            default: return 0;
+        case 0: return (1u << 0) | (1u << 1);
+        case 1: return (1u << 2) | (1u << 3);
+        default: return 0;
         }
     }
     else // 普通按键面板
@@ -440,22 +440,18 @@ void AppProtocolSetConfig::sendSceneData(void)
 
     qDebug() << "开始下发场景数据，共" << m_scene_save.size() << "条";
 
-    for (const auto &scene : m_scene_save) {
-        QByteArray sendData;
-        sendData.append("SetScene");           // 添加固定字符串
-        sendData.append(scene.scene_data);     // 添加场景数据
-        m_serialWidget->SerialSendData(sendData);
+    for (const auto &scene : m_scene_save)
+    {
+        QByteArray frame = packFrame(scene.scene_data, "SetScene");
+        m_serialWidget->SerialSendData(frame);
 
         QEventLoop loop;
-        QTimer::singleShot(1000, &loop, &QEventLoop::quit);
+        QTimer::singleShot(500, &loop, &QEventLoop::quit);
         loop.exec();
-
     }
-
-    qDebug() << "场景数据下发完成";
 }
 
-// 下发场景数据
+// 下发绑定数据
 void AppProtocolSetConfig::sendBindData(void)
 {
     if (m_bind_save.isEmpty()) {
@@ -464,19 +460,45 @@ void AppProtocolSetConfig::sendBindData(void)
 
     qDebug() << "开始下发绑定数据，共" << m_bind_save.size() << "条";
 
-    for (const auto &bind : m_bind_save) {
-        QByteArray sendData;
-        sendData.append("BindScene");           // 添加固定字符串
-        sendData.append(bind.bind_data);        // 添加场景数据
-        m_serialWidget->SerialSendData(sendData);
+    for (const auto &bind : m_bind_save)
+    {
+        QByteArray frame = packFrame(bind.bind_data, "BindScene");
+        m_serialWidget->SerialSendData(frame);
 
         QEventLoop loop;
-        QTimer::singleShot(1000, &loop, &QEventLoop::quit);
+        QTimer::singleShot(500, &loop, &QEventLoop::quit);
         loop.exec();
-
     }
+}
 
-    qDebug() << "场景数据下发完成";
+// 下发删除场景信息
+void AppProtocolSetConfig::sendClearSceneData(void)
+{
+    QByteArray frame = packFrame(QByteArray(), "DelScene");
+    m_serialWidget->SerialSendData(frame);
+}
+
+void AppProtocolSetConfig::sendClearBindData(void)
+{
+    QByteArray frame = packFrame(QByteArray(), "DelBind");
+    m_serialWidget->SerialSendData(frame);
+}
+
+QByteArray AppProtocolSetConfig::packFrame(const QByteArray &payload, const QByteArray &cmdType)
+{
+    QByteArray frame;
+
+    frame.append(static_cast<char>(0xFA));
+    frame.append(static_cast<char>(0xFB));
+    frame.append(static_cast<char>(0x02));
+
+    frame.append(cmdType);
+    frame.append(payload);
+
+    frame.append(static_cast<char>(0x0D));
+    frame.append(static_cast<char>(0x0A));
+
+    return frame;
 }
 
 

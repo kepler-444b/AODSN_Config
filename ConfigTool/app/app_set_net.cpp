@@ -6,6 +6,11 @@ AppSetNet::AppSetNet(QWidget *parent,  AppSerial* serialWidget) :
     ui(new Ui::AppSetNet)
 {
     ui->setupUi(this);
+    ui->dns->setEnabled(false);
+    ui->mac->setEnabled(false);
+    ui->sn->setEnabled(false);
+    ui->ver->setEnabled(false);
+
     m_serialWidget = serialWidget;
     m_protocol_set_net = new AppProtocolSetNet(this, m_serialWidget);   // 创建协议数据实例
 
@@ -66,13 +71,19 @@ void AppSetNet::on_set_info_clicked()
     memset(packet.devices, 0, sizeof(packet.devices));
     memcpy(packet.devices, devBytes.constData(), std::min(devBytes.size(), static_cast<int>(sizeof(packet.devices))));
 
+    QByteArray verBytes = ui->ver->text().toUtf8();
+    memset(packet.ver, 0, sizeof(packet.ver));
+    memcpy(packet.ver, devBytes.constData(), std::min(devBytes.size(), static_cast<int>(sizeof(packet.ver))));
+
     // 8. key
     QByteArray keyBytes = ui->dev_key->text().toUtf8();
     memset(packet.key, 0, sizeof(packet.key));
     memcpy(packet.key, keyBytes.constData(), std::min(keyBytes.size(), static_cast<int>(sizeof(packet.key))));
 
-    m_protocol_set_net->SetInfoData(packet);
-
+    if(m_protocol_set_net->SetInfoData(packet))
+    {
+        QMessageBox::information(this, "提示", "下发信息成功");
+    }
 }
 
 // 获取信息
@@ -81,6 +92,7 @@ void AppSetNet::on_get_info_clicked()
     m_protocol_set_net->GetInfoData();
 }
 
+// 设置显示信息
 void AppSetNet::setDisplay(const dev_packet_t &info)
 {
     ui->ip->setText(QString("%1.%2.%3.%4").arg(info.net.ip[0]) .arg(info.net.ip[1]) .arg(info.net.ip[2]) .arg(info.net.ip[3]));
@@ -118,6 +130,12 @@ void AppSetNet::setDisplay(const dev_packet_t &info)
     // key
     QString keyStr = QString::fromUtf8(info.key, strnlen(info.key, 128));
     ui->dev_key->setText(keyStr);
+
+    // ver
+    QString verStr = QString::fromUtf8(info.ver, strnlen(info.ver, 16));
+    ui->ver->setText(verStr);
+
+    QMessageBox::information(this, "提示", "设备信息获取成功");
 }
 
 

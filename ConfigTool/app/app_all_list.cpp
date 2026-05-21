@@ -211,3 +211,16 @@ void AppAllList::on_send_bind_clicked()
 {
     emit requestSendBindData();
 }
+
+
+// 删除场景
+void AppAllList::on_clear_scene_clicked()
+{
+    emit requestClearSceneData();
+}
+
+// 删除绑定F
+void AppAllList::on_clear_bind_clicked()
+{
+    emit requestClearBindData();
+}

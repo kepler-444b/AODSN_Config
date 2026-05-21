@@ -21,6 +21,7 @@ typedef struct
     wiz_NetInfo net;
     char devices[32];
     char key[128];
+    char ver[16];
 
 } dev_packet_t;
 
@@ -32,8 +33,10 @@ class AppProtocolSetNet : public QObject
 public:
     explicit AppProtocolSetNet(QObject *parent, AppSerial* serialWidget);
     void RecvDataParse(const QByteArray &data);
-    void GetInfoData(void);
-    void SetInfoData(const dev_packet_t &info);
+    bool GetInfoData(void);
+    bool SetInfoData(const dev_packet_t &info);
+
+    QByteArray PackData(uint8_t cmdType, const QByteArray &payload);
 
 signals:
     void sigUpdate(const dev_packet_t &info);

@@ -6,6 +6,10 @@
 #include <QHBoxLayout>
 #include <QListWidget>
 #include <QStackedWidget>
+#include <QMessageBox>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QDialogButtonBox>
 #include "app/app_serial.h"
 #include "app/app_display.h"
 #include "app/app_set_addr.h"
@@ -31,6 +35,8 @@ protected:
 private slots:
     void on_debug_triggered();
     void on_listWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+
+    void on_ver_triggered();
 
 private:
     Ui::MainWindow *ui             = nullptr;

@@ -100,6 +100,11 @@ public slots:
     void sendSceneData(void); // 下发场景数据
     void sendBindData(void);  // 下发绑定信息
 
+    void sendClearSceneData(void);
+    void sendClearBindData(void);
+
+    QByteArray packFrame(const QByteArray &payload, const QByteArray &cmdType); // 打包函数
+
 
 signals:
     void sceneListChanged(const QVector<scene_save_t>& data); // 场景列表发生变化

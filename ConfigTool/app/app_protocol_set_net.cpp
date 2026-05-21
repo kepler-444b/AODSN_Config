@@ -1,5 +1,14 @@
 #include "app_protocol_set_net.h"
 
+
+namespace {
+// 协议头尾常量
+constexpr uint8_t PACKET_HEAD_1 = 0xFA;
+constexpr uint8_t PACKET_HEAD_2 = 0xFB;
+constexpr uint8_t PACKET_TAIL_1 = 0x0D;
+constexpr uint8_t PACKET_TAIL_2 = 0x0A;
+}
+
 AppProtocolSetNet::AppProtocolSetNet(QObject *parent, AppSerial* serialWidget)
     : QObject(parent)
 {
@@ -8,7 +17,6 @@ AppProtocolSetNet::AppProtocolSetNet(QObject *parent, AppSerial* serialWidget)
 
 void AppProtocolSetNet::RecvDataParse(const QByteArray &data)
 {
-    qDebug() << "size" << sizeof(dev_packet_t);
     if (data.size() < static_cast<int>(sizeof(dev_packet_t))) {
         qDebug() << "Data too short!";
         return;
@@ -20,36 +28,45 @@ void AppProtocolSetNet::RecvDataParse(const QByteArray &data)
 }
 
 // 获取设备信息
-void AppProtocolSetNet::GetInfoData(void)
+bool AppProtocolSetNet::GetInfoData(void)
 {
-    QByteArray sendData;
+    QByteArray payload;
+    payload.append(static_cast<char>(0x01));
+    payload.append(static_cast<char>(0x02));
+    payload.append(static_cast<char>(0x03));
 
-    sendData.append(static_cast<char>(0xFA));
-    sendData.append(static_cast<char>(0xFB));
-    sendData.append(static_cast<char>(0x01));
-    sendData.append(static_cast<char>(0x02));
-    sendData.append(static_cast<char>(0x03));
-    sendData.append(static_cast<char>(0x0D));
-    sendData.append(static_cast<char>(0x0A));
+    QByteArray packet = PackData(0x01, payload);
 
-    m_serialWidget->SerialSendData(sendData);
+    if (m_serialWidget) {
+      return m_serialWidget->SerialSendData(packet);
+    }
+    return false;
 }
 
-void AppProtocolSetNet::SetInfoData(const dev_packet_t &info)
+// 下发设备信息
+bool AppProtocolSetNet::SetInfoData(const dev_packet_t &info)
 {
-    QByteArray sendData;
+    QByteArray payload(reinterpret_cast<const char*>(&info), sizeof(info));
+    QByteArray packet = PackData(0x01, payload);
 
-    sendData.append(static_cast<char>(0xFA));
-    sendData.append(static_cast<char>(0xFB));
-
-    sendData.append(reinterpret_cast<const char*>(&info), sizeof(info));
-
-    sendData.append(static_cast<char>(0x0D));
-    sendData.append(static_cast<char>(0x0A));
-
-    // 发送
     if (m_serialWidget) {
-        m_serialWidget->SerialSendData(sendData);
+        return m_serialWidget->SerialSendData(packet);
     }
+    return false;
+}
 
+// 打包函数
+QByteArray AppProtocolSetNet::PackData(uint8_t cmdType, const QByteArray &payload)
+{
+    QByteArray packet;
+    packet.reserve(2 + 1 + payload.size() + 2); // 头+cmd+payload+尾
+
+    packet.append(static_cast<char>(PACKET_HEAD_1));
+    packet.append(static_cast<char>(PACKET_HEAD_2));
+    packet.append(static_cast<char>(cmdType));
+    packet.append(payload);
+    packet.append(static_cast<char>(PACKET_TAIL_1));
+    packet.append(static_cast<char>(PACKET_TAIL_2));
+
+    return packet;
 }
