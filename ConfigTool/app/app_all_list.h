@@ -46,13 +46,12 @@ private slots:
     void on_send_bind_clicked();
 
 
-    void on_clear_scene_clicked();
+    void on_del_scene_clicked();
 
-    void on_clear_bind_clicked();
+    void on_del_bind_clicked();
 
 private:
     Ui::AppAllList *ui;
-
     QVector<scene_save_t> m_sceneInfo;
     QVector<bind_save_t>m_bindInfo;
 };

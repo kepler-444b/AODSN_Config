@@ -369,19 +369,24 @@ void DialogSetScene::on_pushButton_clicked()
         }
     }
 
-    bool saveSuccess = false;
-    emit send_config(panelsResult, ledsResult, relayResult, scene_id, scene_name, saveSuccess); // 通过信号发送数据
+    emit send_config(panelsResult, ledsResult, relayResult, scene_id, scene_name); // 通过信号发送数据
 
-
-    // 3. 根据外部槽函数修改后的结果，决定是否关闭本窗口
-    if (saveSuccess)
+    // 根据外部槽函数修改后的结果,决定是否关闭本窗口
+    if (m_sendSuccess)
     {
-        accept(); //  只有外部真正保存成功了（或同意替换），下一层窗口才关闭
+        qDebug() << "m_sendSuccess" << m_sendSuccess;
+        accept(); //  只有外部真正保存成功了(或同意替换)，下一层窗口才关闭
     }
     else
     {
-        // ❌ 外部拒绝了（用户点了“否”），本窗口什么都不做，继续保持打开状态，让用户修改
+        qDebug() << "m_sendSuccess" << m_sendSuccess;
+        // 外部拒绝了(用户点了“否”)，本窗口什么都不做，继续保持打开状态，让用户修改
     }
+}
+
+void DialogSetScene::on_send_config_result(bool success)
+{
+    m_sendSuccess = success;
 }
 
 uint8_t  DialogSetScene::getAddrFromGroup(QGroupBox* group)

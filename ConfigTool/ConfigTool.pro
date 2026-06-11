@@ -16,6 +16,7 @@ SOURCES += \
     app/app_protocol_set_net.cpp \
     app/app_sel_extend.cpp \
     app/app_sel_set_scene.cpp \
+    app/app_sel_timer.cpp \
     app/app_set_net.cpp \
     flow/flowlayout.cpp \
     app/app_display.cpp \
@@ -40,6 +41,7 @@ HEADERS += \
     app/app_protocol_set_net.h \
     app/app_sel_extend.h \
     app/app_sel_set_scene.h \
+    app/app_sel_timer.h \
     app/app_set_net.h \
     flow/flowlayout.h \
     app/app_display.h \
@@ -62,11 +64,11 @@ FORMS += \
     app/app_sel_extend.ui \
     app/app_sel_panel.ui \
     app/app_sel_set_scene.ui \
+    app/app_sel_timer.ui \
     app/app_serial.ui \
     app/app_set_addr.ui \
     app/app_set_config.ui \
     app/app_set_net.ui \
-    app/app_set_scene.ui \
     mainwindow.ui \
     model/model_led_ex.ui \
     model/model_panel_1key.ui \

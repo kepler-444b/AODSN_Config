@@ -16,12 +16,13 @@ AppSetConfig::AppSetConfig(QWidget *parent, AppSerial* serialWidget) :
 
     CreateListWindow(); // 创建场景列表
 
+    connect(m_serialWidget, &AppSerial::sigRecvData, m_protocol_set_config, &AppProtocolSetConfig::recv_serial_data, Qt::UniqueConnection);
     connect(m_sceneListWidget, &AppAllList::requestDeleteScene, m_protocol_set_config, &AppProtocolSetConfig::deleteScene);
     connect(m_sceneListWidget, &AppAllList::requsetDeleteBind, m_protocol_set_config, &AppProtocolSetConfig::deleteBind);
 
     QTimer::singleShot(100, this, &AppSetConfig::autoLoadAllData);         // 加载上次保存的配置
     QShortcut* shortcutSave = new QShortcut(QKeySequence("Ctrl+S"), this); // ctrl + s 触发保存快捷键
-    connect(shortcutSave, &QShortcut::activated, this, &AppSetConfig::on_load_data_clicked);
+    connect(shortcutSave, &QShortcut::activated, this, &AppSetConfig::on_save_data_clicked);
 }
 
 AppSetConfig::~AppSetConfig()
@@ -60,15 +61,13 @@ void AppSetConfig::on_add_panel_clicked()
     if (!panelWidget)
         return;
 
-    AddPanelToLayout(panelWidget);
-    m_panelMap.insert(info.addr, panelWidget); // 注册 UI 映射
+    AddToLayout(panelWidget);
 
     // 保存数据
     m_panelArray[m_panelCount] = info;
     m_panelCount++;
     m_lastPanelInfo = info;
-
-    qDebug() << "添加成功:" << m_panelCount;
+    m_ui_Changed = true;
 }
 
 // 添加扩展
@@ -101,18 +100,13 @@ void AppSetConfig::on_add_extend_clicked()
     QWidget* extendWidget = CreateExtendWidget(info);
     if (!extendWidget) return;
 
-    AddPanelToLayout(extendWidget);
-
-    if (info.type == LED_EX) {
-        m_ledMap.insert(info.id, extendWidget);
-    }
-    else if (info.type == RELAY_EX) {
-        m_relayMap.insert(info.id, extendWidget);
-    }
+    AddToLayout(extendWidget);
 
     m_lastExtendInfo = info;
+    m_ui_Changed = true;
 }
 
+// 点击"创建场景"按钮
 void AppSetConfig::on_set_scene_clicked()
 {
     create_scene(-1);
@@ -122,11 +116,13 @@ void AppSetConfig::on_set_scene_clicked()
 void AppSetConfig::create_scene(int id)
 {
     bool is_edit = (id != -1);
-    uint8_t scene_id   = 0;
+
     QString scene_name = "NULL";
 
     QVector<PanelInfo_t> panelList;
     QVector<ExtendInfo_t> extendlist;
+
+    uint8_t scene_id = m_protocol_set_config->getAllConfigData().scene.size(); // 获取场景数量,场景ID自动递增
 
     for (int i = 0; i < m_panelCount; ++i)
         panelList.append(m_panelArray[i]);
@@ -141,7 +137,6 @@ void AppSetConfig::create_scene(int id)
         if (m_relayArray[i].type == RELAY_EX)
             extendlist.append(m_relayArray[i]);
     }
-
 
     if (is_edit) // 是编辑场景
     {
@@ -198,10 +193,9 @@ void AppSetConfig::create_scene(int id)
     }
 
     m_set_sceneDialog = new DialogSetScene(panelList, extendlist, scene_id, scene_name, this);
-    connect(m_set_sceneDialog, &DialogSetScene::send_config, m_protocol_set_config, &AppProtocolSetConfig::recv_scene_data); // 连接信号,到prorocol_set_config中处理
-
-    if (m_set_sceneDialog->exec() != QDialog::Accepted)
-        return;
+    connect(m_set_sceneDialog, &DialogSetScene::send_config, m_protocol_set_config, &AppProtocolSetConfig::recv_scene_data);                  // 连接信号,到prorocol_set_config中处理
+    connect(m_protocol_set_config, &AppProtocolSetConfig::recv_scene_data_result, m_set_sceneDialog, &DialogSetScene::on_send_config_result); // 连接信号,到prorocol_set_config中处理
+    m_set_sceneDialog->show();
 }
 
 template<typename PanelBase>
@@ -258,7 +252,7 @@ QWidget* AppSetConfig::CreateExtendWidget(const ExtendInfo_t& info)
     {
         auto extend = new ModelRelayEx(this);
         extend->SetExtendAddr(info.id, info.type);
-        //        connect(extend, &ModelLedEx::requestDelete, this, &AppSetConfig::RemoveExtend);
+        connect(extend, &ModelRelayEx::requestDelete, this, &AppSetConfig::RemoveExtend);
         return extend;
     }
     return nullptr;
@@ -266,22 +260,25 @@ QWidget* AppSetConfig::CreateExtendWidget(const ExtendInfo_t& info)
 
 
 // 添加到布局
-void AppSetConfig::AddPanelToLayout(QWidget* panelWidget)
+void AppSetConfig::AddToLayout(QWidget* Widget)
 {
-    if (!panelWidget)
+    if (!Widget)
         return;
-    m_flowLayout->addWidget(panelWidget);
+    m_flowLayout->addWidget(Widget);
 }
 
 // 删除 panel
 void AppSetConfig::RemovePanel(uint8_t id)
 {
-    QWidget* w = m_panelMap.take(id);
+    // 利用 Qt 的信号发送者机制,直接拿到触发删除的那个 Widget 指针
+    QWidget* w = qobject_cast<QWidget*>(sender());
     if (!w) return;
 
+    // 从布局中移除并销毁
     m_flowLayout->removeWidget(w);
     w->deleteLater();
 
+    // 同步清理底层数据数组
     for (int i = 0; i < m_panelCount; i++)
     {
         if (m_panelArray[i].addr == id)
@@ -298,36 +295,31 @@ void AppSetConfig::RemovePanel(uint8_t id)
 // 删除扩展
 void AppSetConfig::RemoveExtend(uint8_t id, ExtendType type)
 {
-    QWidget* w = nullptr;
+    QWidget* w = qobject_cast<QWidget*>(sender());
+    if (!w) return;
 
-    if (type == LED_EX)
-    {
-        w = m_ledMap.take(id);
-        if (!w) return;
+    m_flowLayout->removeWidget(w);
+    w->deleteLater();
 
-        m_flowLayout->removeWidget(w);
-        w->deleteLater();
-
-        for (int i = 0; i < m_ledCount; i++)
-        {
-            if (m_ledArray[i].id == id)
-            {
-                for (int j = i; j < m_ledCount - 1; j++)
-                    m_ledArray[j] = m_ledArray[j + 1];
-                m_ledCount--;
-                break;
+    if (type == LED_EX) {
+        for (int i = 0; i < m_ledCount; i++) {
+            if (m_ledArray[i].id == id) {
+                for (int j = i; j < m_ledCount - 1; j++) m_ledArray[j] = m_ledArray[j + 1];
+                m_ledCount--; break;
             }
         }
-        qDebug() << "删除 LED 扩展 id:" << id;
     }
-    else if (type == RELAY_EX)
-    {
-        // 继电器扩展暂不实现
-        qDebug() << "删除继电器扩展 id:" << id << " 暂未实现";
-        return;
+    else if (type == RELAY_EX) {
+        for (int i = 0; i < m_relayCount; i++) {
+            if (m_relayArray[i].id == id) {
+                for (int j = i; j < m_relayCount - 1; j++) m_relayArray[j] = m_relayArray[j + 1];
+                m_relayCount--; break;
+            }
+        }
     }
 }
 
+// 修改别名
 void AppSetConfig::UpdatePanelKeyName(uint8_t panelId, int keyIndex, const QString& newAlias)
 {
     if (keyIndex < 0 || keyIndex >= 6)
@@ -339,32 +331,38 @@ void AppSetConfig::UpdatePanelKeyName(uint8_t panelId, int keyIndex, const QStri
         if (m_panelArray[i].addr == panelId)
         {
             m_panelArray[i].key_name[keyIndex] = newAlias;
-            qDebug() << QString("更新面板 %1 的按键 %2 别名: %3")
-                        .arg(panelId).arg(keyIndex+1).arg(newAlias);
+            m_ui_Changed = true;
+            qDebug() << QString("更新面板 %1 的按键 %2 别名: %3").arg(panelId).arg(keyIndex+1).arg(newAlias);
             return;
         }
     }
-
     qDebug() << "未找到面板ID:" << panelId;
 }
 
 // id是否存在
 bool AppSetConfig::IsPanelIdExist(uint8_t id) const
 {
-    return m_panelMap.contains(id);
+    for (int i = 0; i < m_panelCount; ++i) {
+        if (m_panelArray[i].addr == id) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool AppSetConfig::IsExtendLedExist(ExtendInfo_t *info) const
 {
-    if (info->type == LED_EX)
-    {
-        return m_ledMap.contains(info->id);
+    if (info->type == LED_EX) {
+        for (int i = 0; i < m_ledCount; ++i) {
+            if (m_ledArray[i].id == info->id) return true;
+        }
     }
-    else if(info->type == RELAY_EX)
-    {
-        return  m_relayMap.contains(info->id);
+    else if (info->type == RELAY_EX) {
+        for (int i = 0; i < m_relayCount; ++i) {
+            if (m_relayArray[i].id == info->id) return true;
+        }
     }
-    return true;
+    return false;
 }
 
 
@@ -374,13 +372,6 @@ void AppSetConfig::CreateListWindow()
     if (!m_sceneListWidget)
     {
         m_sceneListWidget = new AppAllList(nullptr);
-
-        QWidget* mainWindow = this->window();
-        QRect parentRect = mainWindow->frameGeometry(); // 让窗口在主窗口右侧,垂直居中
-
-        int newX = parentRect.right();
-        int newY = parentRect.top() + (parentRect.height() - m_sceneListWidget->height()) / 2;
-        m_sceneListWidget->move(newX, newY);
 
         connect(m_sceneListWidget, &QWidget::destroyed, this, [this]() {m_sceneListWidget = nullptr;}); // 当窗口关闭时,将指针置空
         connect(m_sceneListWidget, &AppAllList::requestSendSceneData,  m_protocol_set_config, &AppProtocolSetConfig::sendSceneData);    // 下发设备场景
@@ -393,21 +384,165 @@ void AppSetConfig::CreateListWindow()
 
         connect(m_protocol_set_config, &AppProtocolSetConfig::sceneListChanged, m_sceneListWidget, &AppAllList::setSceneData); // 连接场景数据
         connect(m_protocol_set_config, &AppProtocolSetConfig::bindListChanged,m_sceneListWidget, &AppAllList::setBindData);    // 连接绑定数据
-
     }
 }
 
 // 打开场景列表
-void AppSetConfig::on_pushButton_clicked()
+void AppSetConfig::on_scene_list_clicked()
 {
     CreateListWindow();
-    m_sceneListWidget->show();
-    m_sceneListWidget->raise();
-    m_sceneListWidget->activateWindow();
+    if (m_sceneListWidget)
+    {
+        m_sceneListWidget->show();
+        m_sceneListWidget->raise();
+        m_sceneListWidget->activateWindow();
+    }
+}
+
+// 打开定时任务
+void AppSetConfig::on_timer_task_clicked()
+{
+    if (!m_timerSelDialog)
+    {
+        m_timerSelDialog = new DialogTimer(this);
+        connect(m_timerSelDialog, &DialogTimer::sigGetTimerTask,  m_protocol_set_config, &AppProtocolSetConfig::sendGetTimerTask);    // 获取定时任务
+        connect(m_timerSelDialog, &DialogTimer::sigSetTimerTask, m_protocol_set_config, &AppProtocolSetConfig::sendSetTimerTask);     // 下发定时任务
+        connect(m_protocol_set_config, &AppProtocolSetConfig::sigUpdate, m_timerSelDialog, &DialogTimer::setDisplay);                 // 更新控件显示
+    }
+    if (m_timerSelDialog->exec() != QDialog::Accepted)
+        return;
+}
+
+// 校准时间
+void AppSetConfig::on_time_cal_clicked()
+{
+    bool ok = false;
+    // 每次点击按钮进来，都获取最新的系统时间作为初始值
+    QString input_text = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+
+    while (true) {
+        input_text = QInputDialog::getText(
+                    this,
+                    tr("校准时间"),
+                    tr("请输入时间 yyyy-MM-dd HH:mm:ss"),
+                    QLineEdit::Normal,
+                    input_text, // 如果输错循环了，这里会保留用户输错的文本
+                    &ok
+                    );
+
+        if (!ok) {
+            break; // 点取消,直接退出函数
+        }
+
+        QDateTime select_time = QDateTime::fromString(input_text, "yyyy-MM-dd HH:mm:ss");
+
+        if (select_time.isValid()) {
+            uint64_t unix_time_secs = select_time.toSecsSinceEpoch();
+            m_protocol_set_config->sendCalTime(unix_time_secs);
+            return; // 成功发送，大功告成
+        } else {
+            QMessageBox::warning(this, tr("错误"), tr("时间格式输入有误，请严格按照 yyyy-MM-dd HH:mm:ss 格式输入!"));
+        }
+    }
+}
+
+// 关闭场景列表
+void AppSetConfig::CloseListWidget()
+{
+    if (m_sceneListWidget) {
+        m_sceneListWidget->close();
+        m_sceneListWidget = nullptr;
+    }
+}
+
+bool AppSetConfig::ConfigIsChanged()
+{
+    bool ok = false;
+    if(m_ui_Changed == true) { // UI 界面发生变化
+        ok = true;
+    }
+    if (m_protocol_set_config && m_protocol_set_config->configIsChanged())
+    {
+        ok = true;
+    }
+    return ok;
+}
+
+// 新建配置信息
+void AppSetConfig::on_new_data_clicked()
+{
+    QSettings settings("AODSN", "ConfigTool");
+    QString defaultPath = settings.value("lastSavePath", "data.json").toString();
+
+    // 让用户选择“新文件路径 + 文件名”
+    QString filePath = QFileDialog::getSaveFileName(this, "新建配置文件", defaultPath, "JSON Files (*.json);;All Files (*.*)");
+
+    if (filePath.isEmpty())
+        return;
+
+    // 自动补后缀
+    if (!filePath.endsWith(".json"))
+        filePath += ".json";
+
+    // 创建一个基础空结构 JSON
+    QJsonObject root;
+    root["config"] = QJsonObject();
+    root["protocol"] = QJsonObject();
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "失败", "无法创建文件,请检查路径权限");
+        return;
+    }
+
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.close();
+
+    // 清UI
+    QLayoutItem *child;
+    while ((child = m_flowLayout->takeAt(0)) != nullptr) {
+        if (child->widget()) {
+            child->widget()->deleteLater();
+        }
+        delete child;
+    }
+
+    // 清数据
+    m_panelCount = 0;
+    m_ledCount = 0;
+    m_relayCount = 0;
+
+    // 清协议数据
+    if (m_protocol_set_config) {
+        m_protocol_set_config->setAllConfigData({});
+        m_protocol_set_config->setAllBindData({});
+    }
+    settings.setValue("lastSavePath", filePath);
+    QMessageBox::information(this, "新建成功", "已创建并清空当前工程");
+}
+
+// 导入配置信息
+void AppSetConfig::on_load_data_clicked()
+{
+    QSettings settings("AODSN", "ConfigTool");
+    QString defaultPath = settings.value("lastSavePath", "data.json").toString(); // 默认路径使用上次保存的路径
+
+    QString filePath = QFileDialog::getOpenFileName(this, "加载配置信息", defaultPath, "JSON Files (*.json);;All Files (*.*)");
+    if (filePath.isEmpty()) return;
+
+    // 加载3部分数据 UI数据,场景数据,绑定数据
+    bool ok = loadWidgets(filePath) && loadSceneDatas(filePath)  && loadBindDatas(filePath);
+
+    if(ok) {
+        settings.setValue("lastSavePath", filePath); // 保存到 QSettings,确保下次可用
+        QMessageBox::information(this, "加载成功", QString("配置已成功加载!\n%1个面板,%2个LED扩展,%3个继电器扩展").arg(m_panelCount).arg(m_ledCount).arg(m_relayCount));
+    } else {
+        QMessageBox::warning(this, "加载失败", "配置文件加载失败，请检查文件格式或路径");
+    }
 }
 
 // 保存配置信息
-void AppSetConfig::on_load_data_clicked()
+void AppSetConfig::on_save_data_clicked()
 {
     QSettings settings("AODSN", "ConfigTool");
     QString defaultPath = settings.value("lastSavePath", "data.json").toString();
@@ -415,66 +550,51 @@ void AppSetConfig::on_load_data_clicked()
     QString filePath = QFileDialog::getSaveFileName(this, "保存配置信息", defaultPath, "JSON Files (*.json);;All Files (*.*)");
     if (filePath.isEmpty()) return;
 
-    saveWidgets(filePath);       // 保存UI配置
-    saveSceneDatas(filePath);    // 保存协议数据
-    saveBindDatas(filePath);     // 保存绑定信息
+    bool ok = saveWidgets(filePath) && saveSceneDatas(filePath)  && saveBindDatas(filePath);
 
-    settings.setValue("lastSavePath", filePath); // 保存到 QSettings,确保下次可用
-    QMessageBox::information(this, "保存成功", QString("配置已成功保存！\n文件路径：%1\n共保存 %2 个面板").arg(filePath).arg(m_panelCount));
-}
+    if (ok) {
+        settings.setValue("lastSavePath", filePath); // 保存到 QSettings,确保下次可用
+        QMessageBox::information(this, "保存成功", QString("配置已成功保存！\n文件路径：%1\n共保存 %2 个面板").arg(filePath).arg(m_panelCount));
 
-// 加载配置信息
-void AppSetConfig::on_save_data_clicked()
-{
-    QSettings settings("AODSN", "ConfigTool");
-    QString defaultPath = settings.value("lastSavePath", "data.json").toString();
-    QString filePath = QFileDialog::getOpenFileName(this, "加载配置信息", defaultPath, "JSON Files (*.json);;All Files (*.*)");
-
-    if (filePath.isEmpty())
-        return;
-
-    if (loadWidgets(filePath)) {
-        settings.setValue("lastSavePath", filePath); // 成功加载后，保存当前路径，方便下次打开默认选中
-        QMessageBox::information(this, "加载成功", QString("配置已成功加载!\n%1个面板,%2个LED扩展,%3个继电器扩展").arg(m_panelCount).arg(m_ledCount).arg(m_relayCount));
+        // 保存成功后,清除改变标志位
+        m_ui_Changed = false;
+        if(m_protocol_set_config) {
+            m_protocol_set_config->clearConfigChanged();
+        }
     } else {
-        QMessageBox::warning(this, "加载失败", "配置文件加载失败，请检查文件格式或路径。");
-    }
-
-    if (loadWidgets(filePath)) {
-        loadSceneDatas(filePath);
-        loadBindDatas(filePath);
-        QMessageBox::information(this, "加载成功", "配置与场景数据已同步加载！");
+        QMessageBox::warning(this, "保存失败", "配置文件保存失败，请检查文件是否被占用或磁盘是否可写");
     }
 }
 
 // 保存界面文件
-void AppSetConfig::saveWidgets(const QString& filePath)
+bool AppSetConfig::saveWidgets(const QString& filePath)
 {
     QFile file(filePath);
-    QJsonObject root;
+    QJsonObject root; // 创建一个空的 json 对象
 
     // 如果文件存在,先读取
     if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
         file.close();
-        if (doc.isObject()) root = doc.object();
+        if (doc.isObject()) {
+            root = doc.object(); // 把文件里的 JSON 复制到 root 变量里
+        }
     }
 
-    // 保存原来的 saveData 内容到 config 对象
+    // 构造配置数据对象
     QJsonObject configObj;
 
     // panel
     QJsonArray panelArray;
     for (int i = 0; i < m_panelCount; ++i) {
         const auto& p = m_panelArray[i];
-        QJsonObject obj{
-            {"id", p.addr},
-            {"type", static_cast<int>(p.type)},
-            {"key_num", p.key_num}
-        };
+        QJsonObject obj{{"id", p.addr}, {"type", static_cast<int>(p.type)}, {"key_num", p.key_num}};
         QJsonArray keyNames;
-        for (const auto& name : p.key_name) keyNames.append(name);
+
+        for (const auto& name : p.key_name) {
+            keyNames.append(name);
+        }
         obj["key_name"] = keyNames;
         panelArray.append(obj);
     }
@@ -484,10 +604,7 @@ void AppSetConfig::saveWidgets(const QString& filePath)
     QJsonArray ledArray;
     for (int i = 0; i < m_ledCount; ++i) {
         const auto& led = m_ledArray[i];
-        QJsonObject obj{
-            {"id", led.id},
-            {"type", static_cast<int>(led.type)}
-        };
+        QJsonObject obj{{"id", led.id}, {"type", static_cast<int>(led.type)}};
         ledArray.append(obj);
     }
     configObj["led_ex"] = ledArray;
@@ -496,12 +613,10 @@ void AppSetConfig::saveWidgets(const QString& filePath)
     QJsonArray relayArray;
     for (int i = 0; i < m_relayCount; ++i) {
         const auto& relay = m_relayArray[i];
-        QJsonObject obj{
-            {"id", relay.id},
-            {"type", static_cast<int>(relay.type)}
-        };
+        QJsonObject obj{{"id", relay.id}, {"type", static_cast<int>(relay.type)}};
         relayArray.append(obj);
     }
+
     configObj["relay_ex"] = relayArray;
     configObj["panel_count"] = m_panelCount;
     configObj["led_ex_count"] = m_ledCount;
@@ -513,9 +628,9 @@ void AppSetConfig::saveWidgets(const QString& filePath)
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
         file.close();
-        qDebug() << "saveData 保存成功到 config 对象";
+        return true;
     } else {
-        qWarning() << "写入失败：" << file.errorString();
+        return false;
     }
 }
 
@@ -567,36 +682,18 @@ bool AppSetConfig::loadWidgets(const QString& filePath)
 
     auto config = root["config"].toObject();
     // 彻底销毁旧的面板控件
-    for (QWidget* widget : m_panelMap.values()) {
-        if (widget) {
-            m_flowLayout->removeWidget(widget); // 从布局中移除
-            widget->deleteLater();              // 延迟销毁对象（安全做法）
+    QLayoutItem *child;
+    while ((child = m_flowLayout->takeAt(0)) != nullptr) {
+        if (child->widget()) {
+            child->widget()->deleteLater();
         }
+        delete child;
     }
 
-    // 彻底销毁旧的 LED 扩展控件
-    for (QWidget* widget : m_ledMap.values()) {
-        if (widget) {
-            m_flowLayout->removeWidget(widget);
-            widget->deleteLater();
-        }
-    }
-
-    // 彻底销毁旧的继电器扩展控件
-    for (QWidget* widget : m_relayMap.values()) {
-        if (widget) {
-            m_flowLayout->removeWidget(widget);
-            widget->deleteLater();
-        }
-    }
-
-    // 清空原有数据
+    // 清空原有计数数据
     m_panelCount = 0;
     m_ledCount = 0;
     m_relayCount = 0;
-    m_panelMap.clear();
-    m_ledMap.clear();
-    m_relayMap.clear();
 
     // panel
     for (const auto& val : config["panel"].toArray()) {
@@ -614,8 +711,7 @@ bool AppSetConfig::loadWidgets(const QString& filePath)
 
         m_panelArray[m_panelCount] = p;
         if (auto widget = CreatePanelWidget(p)) {
-            AddPanelToLayout(widget);
-            m_panelMap.insert(p.addr, widget);
+            AddToLayout(widget);
             m_panelCount++;
         }
     }
@@ -630,8 +726,7 @@ bool AppSetConfig::loadWidgets(const QString& filePath)
         m_ledArray[m_ledCount++] = led;
 
         if (auto widget = CreateExtendWidget(led)) {
-            AddPanelToLayout(widget);
-            m_ledMap.insert(led.id, widget);
+            AddToLayout(widget);
         }
     }
 
@@ -645,8 +740,7 @@ bool AppSetConfig::loadWidgets(const QString& filePath)
         m_relayArray[m_relayCount++] = relay;
 
         if (auto widget = CreateExtendWidget(relay)) {
-            AddPanelToLayout(widget);
-            m_relayMap.insert(relay.id, widget);
+            AddToLayout(widget);
         }
     }
 
@@ -654,7 +748,7 @@ bool AppSetConfig::loadWidgets(const QString& filePath)
 }
 
 // 保存场景数据
-void AppSetConfig::saveSceneDatas(const QString &filePath)
+bool AppSetConfig::saveSceneDatas(const QString &filePath)
 {
     QFile file(filePath);
     QJsonObject root;
@@ -752,9 +846,9 @@ void AppSetConfig::saveSceneDatas(const QString &filePath)
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
         file.close();
-        qDebug() << "saveProtocolData 保存成功到 protocol 对象";
+        return true;
     } else {
-        qWarning() << "写入失败：" << file.errorString();
+        return false;
     }
 }
 
@@ -869,7 +963,7 @@ bool AppSetConfig::loadSceneDatas(const QString &filePath)
 }
 
 // 保存绑定信息
-void AppSetConfig::saveBindDatas(const QString &filePath)
+bool AppSetConfig::saveBindDatas(const QString &filePath)
 {
     QFile file(filePath);
     QJsonObject root;
@@ -901,6 +995,9 @@ void AppSetConfig::saveBindDatas(const QString &filePath)
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
         file.close();
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -956,3 +1053,5 @@ bool AppSetConfig::loadBindDatas(const QString &filePath)
 
     return false;
 }
+
+

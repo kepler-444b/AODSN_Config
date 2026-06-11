@@ -4,29 +4,33 @@
 #include <QObject>
 #include <QByteArray>
 #include <QDebug>
-#include <QTimer>
+
+#include "app/app_serial.h"
+
+#define SET_ADDR_SINGLE          0x02 // 单发地址
+#define SET_ADDR_BATCH           0x03 // 群发地址
+#define SET_DEV_INFO             0x05 // 获取设备信息
 
 class AppProtocolSetAddr : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit AppProtocolSetAddr(QObject *parent = nullptr);
+    explicit AppProtocolSetAddr(QObject *parent, AppSerial* serialWidget);
 
     // 接收原始数据
     void RecvDataParse(const QByteArray &data);
     void AddrUpdate(int addr);
     void AddrSendAll();
-    QByteArray BuildFrame(int addr);
-    QByteArray BuildAllFrame(int addr);
+    void GetInfo();
+    QByteArray BuildFrame(int addr, int type);
 
 signals:
-    void sigSendData(const QByteArray &data);
+    void sigDevVer(const uint8_t ver);
 
 private:
-    QByteArray m_buffer;
     int m_addr = 0;
-    bool ParseSetAddrRequest(QByteArray &buffer);
+    AppSerial* m_serialWidget = nullptr; // 保存串口实例
 };
 
 #endif // APP_PROTOCOL_H

@@ -200,6 +200,8 @@ void AppAllList::setBindData(const QVector<bind_save_t> &data)
     layout->addStretch();
 }
 
+
+
 // 下发场景
 void AppAllList::on_send_scene_clicked()
 {
@@ -214,13 +216,13 @@ void AppAllList::on_send_bind_clicked()
 
 
 // 删除场景
-void AppAllList::on_clear_scene_clicked()
+void AppAllList::on_del_scene_clicked()
 {
     emit requestClearSceneData();
 }
 
-// 删除绑定F
-void AppAllList::on_clear_bind_clicked()
+// 删除绑定
+void AppAllList::on_del_bind_clicked()
 {
     emit requestClearBindData();
 }

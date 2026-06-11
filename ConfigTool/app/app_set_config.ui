@@ -31,27 +31,109 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="new_data">
+       <property name="maximumSize">
+        <size>
+         <width>40</width>
+         <height>23</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>新建</string>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QPushButton" name="load_data">
+       <property name="maximumSize">
+        <size>
+         <width>40</width>
+         <height>23</height>
+        </size>
+       </property>
        <property name="text">
-        <string>保存配置</string>
+        <string>导入</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="save_data">
+       <property name="maximumSize">
+        <size>
+         <width>40</width>
+         <height>23</height>
+        </size>
+       </property>
        <property name="text">
-        <string>导入配置</string>
+        <string>保存</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
-   <item row="0" column="1">
-    <layout class="QVBoxLayout" name="verticalLayout">
+   <item row="0" column="1" colspan="2">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>535</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="0" column="3" rowspan="2">
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="timer_task">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>23</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>23</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>定时任务</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QPushButton" name="set_scene">
+       <property name="text">
+        <string>创建场景</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="time_cal">
+       <property name="text">
+        <string>校准时间</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="scene_list">
+       <property name="text">
+        <string>场景列表</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QPushButton" name="add_panel">
        <property name="text">
@@ -68,38 +150,20 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="2">
-    <spacer name="horizontalSpacer">
+   <item row="1" column="2">
+    <spacer name="horizontalSpacer_2">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>590</width>
+       <width>511</width>
        <height>20</height>
       </size>
      </property>
     </spacer>
    </item>
-   <item row="0" column="3">
-    <layout class="QVBoxLayout" name="verticalLayout_3">
-     <item>
-      <widget class="QPushButton" name="set_scene">
-       <property name="text">
-        <string>创建配置</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton">
-       <property name="text">
-        <string>配置列表</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="1" column="0" colspan="4">
+   <item row="2" column="0" colspan="4">
     <widget class="QScrollArea" name="scrollArea">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">

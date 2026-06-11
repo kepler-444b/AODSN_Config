@@ -8,10 +8,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // 初始化各个模块
-    m_protocol      = new AppProtocolSetAddr(this);
+//    m_protocol      = new AppProtocolSetAddr(this);
     SerialWidget    = new AppSerial(ui->centralwidget); // 创建串口实例
 
-    SetAddrWidget   = new AppSetAddr(ui->stackedWidget->widget(0));                 // 创建设置地址页面
+    SetAddrWidget   = new AppSetAddr(ui->stackedWidget->widget(0), SerialWidget);   // 创建设置地址页面
     SetConfigWidget = new AppSetConfig(ui->stackedWidget->widget(1), SerialWidget); // 创建设备配置页面
     SetNetWidget    = new AppSetNet(ui->stackedWidget->widget(2), SerialWidget);    // 创建设置页面
 
@@ -33,11 +33,36 @@ MainWindow::~MainWindow()
 // 关闭主窗口
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if (DisplayWidget) {
+    if (SetConfigWidget && SetConfigWidget->ConfigIsChanged())
+    {
+        QMessageBox msgBox(QMessageBox::Warning, "未保存配置", "检测到配置已修改,是否仍然退出?", QMessageBox::Ok | QMessageBox::Cancel, this);
+
+        msgBox.button(QMessageBox::Ok)->setText("确定");
+        msgBox.button(QMessageBox::Cancel)->setText("取消");
+
+        msgBox.setDefaultButton(QMessageBox::Cancel); // 设置默认聚焦在“取消”上,防止用户习惯性敲回车误关闭
+
+        int ret = msgBox.exec();
+
+        // 只有明确点击了 Ok 才会放行,其他任何操作(点 Cancel 点叉号)都拦截
+        if (ret != QMessageBox::Ok)
+        {
+            event->ignore();   // 拦截关闭
+            return;
+        }
+    }
+
+    if (DisplayWidget) // 关闭调试窗口
+    {
         DisplayWidget->close();
         DisplayWidget = nullptr;
     }
-    QMainWindow::closeEvent(event); // 调用基类处理
+
+    if (SetConfigWidget) // 关闭场景列表
+    {
+        SetConfigWidget->CloseListWidget();
+    }
+    event->accept();
 }
 
 // 弹出调试窗口
@@ -49,7 +74,7 @@ void MainWindow::on_debug_triggered()
         DisplayWidget->setWindowFlags(Qt::Window);
 
         connect(DisplayWidget, &AppDisplay::sigDisplaySendData, SerialWidget, &AppSerial::SerialSendData);  // 显示窗口点击发送 → 串口发送数据
-        connect(SerialWidget, &AppSerial::sigRecvData, DisplayWidget, &AppDisplay::DisplayRecv);            // 串口收到数据 → 显示窗口显示 RX
+        connect(SerialWidget, &AppSerial::sigRecvRawData, DisplayWidget, &AppDisplay::DisplayRecv);            // 串口收到数据 → 显示窗口显示 RX
         connect(SerialWidget, &AppSerial::sigSendData, DisplayWidget, &AppDisplay::DisplaySend);            // 串口发送数据 → 显示窗口显示 TX
     }
 
@@ -61,7 +86,7 @@ void MainWindow::on_debug_triggered()
 // 软件版本
 void MainWindow::on_ver_triggered()
 {
-    QString currentVersion = "v0.1";
+    QString currentVersion = "v0.2";
     QString downloadUrl = "https://gitee.com/jokershudongsheng/ADSON_Release/releases";
 
     QString infoText = QString(
@@ -87,6 +112,20 @@ void MainWindow::on_ver_triggered()
     msgBox.exec();
 }
 
+// 自述文件
+void MainWindow::on_readme_triggered()
+{
+    QString filePath = qApp->applicationDirPath() + "/readme.docx";
+
+    if (!QFile::exists(filePath)) {
+        QMessageBox::warning(this, "错误", "readme.docx 文件不存在！");
+        return;
+    }
+
+    // 打开 Word 文件，使用系统默认程序
+    QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+}
+
 // 功能切换
 void MainWindow::on_listWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
@@ -95,29 +134,18 @@ void MainWindow::on_listWidget_currentItemChanged(QListWidgetItem *current, QLis
     qDebug() << "当前页面" << current->text();
 
     // 离开页面
-    if (previous && previous->text() == "设置地址") {
-        disconnect(SetAddrWidget, &AppSetAddr::sigAddrChanged, m_protocol, &AppProtocolSetAddr::AddrUpdate);
-        disconnect(SetAddrWidget, &AppSetAddr::sigAddrSendAll, m_protocol, &AppProtocolSetAddr::AddrSendAll);
-        disconnect(m_protocol, &AppProtocolSetAddr::sigSendData, SerialWidget, &AppSerial::SerialSendData);
-        disconnect(SerialWidget, &AppSerial::sigRecvData, m_protocol, &AppProtocolSetAddr::RecvDataParse);
+    if (previous && previous->text() == "主机逻辑") {
     }
-    if (previous && previous->text() == "设置配置")
+    if (previous && previous->text() == "主机逻辑")
     {
 
     }
 
     // 进入新页面时建立连接
-    if (current->text() == "设置地址") {
-        connect(SetAddrWidget, &AppSetAddr::sigAddrChanged, m_protocol, &AppProtocolSetAddr::AddrUpdate, Qt::UniqueConnection);
-        connect(SetAddrWidget, &AppSetAddr::sigAddrSendAll, m_protocol, &AppProtocolSetAddr::AddrSendAll, Qt::UniqueConnection);
-        connect(m_protocol, &AppProtocolSetAddr::sigSendData, SerialWidget, &AppSerial::SerialSendData, Qt::UniqueConnection);
-        connect(SerialWidget, &AppSerial::sigRecvData, m_protocol, &AppProtocolSetAddr::RecvDataParse, Qt::UniqueConnection);
+    if (current->text() == "面板信息") {
     }
-    if (current->text() == "设置配置") {
-        //        connect(SetConfigWidget, &AppSetConfig::sigSendDataToSerial, SerialWidget, &AppSerial::SerialSendData);
+    if (current->text() == "面板信息") {
     }
-
-
 
     // 切换到新页面
     int row = ui->listWidget->row(current);

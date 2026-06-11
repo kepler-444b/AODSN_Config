@@ -22,6 +22,9 @@ public:
     ~ModelRelayEx();
     void SetExtendAddr(const uint8_t addr, const ExtendType type);
 
+signals:
+    void requestDelete(uint8_t id, ExtendType type);
+
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
@@ -31,7 +34,7 @@ private:
     Ui::ModelRelayEx *ui;
 
     uint8_t m_addr = 0;
-    ExtendType m_type = LED_EX;
+    ExtendType m_type = RELAY_EX;
 };
 
 #endif // MODEL_RELAY_EX_H

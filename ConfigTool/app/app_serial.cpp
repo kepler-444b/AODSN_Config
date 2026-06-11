@@ -6,20 +6,14 @@ AppSerial::AppSerial(QWidget *parent) :
     ui(new Ui::AppSerial)
 {
     ui->setupUi(this);
+    m_frameTimer = new QTimer(this);
+    m_frameTimer->setSingleShot(true);
+    connect(m_frameTimer, &QTimer::timeout,  this,  &AppSerial::OnFrameTimeout);
 
     ui->baudrate->addItem("9600");
     ui->baudrate->addItem("115200");
     ui->baudrate->setCurrentText("115200");
 
-    ui->recv_timeout->addItem("10");
-    ui->recv_timeout->addItem("20");
-    ui->recv_timeout->addItem("50");
-    ui->recv_timeout->addItem("100");
-
-    m_frameTimer = new QTimer(this);
-    m_frameTimer->setSingleShot(true);
-
-    connect(m_frameTimer, &QTimer::timeout, this, &AppSerial::RecvTimeout, Qt::UniqueConnection);
     RefreshPorts();
     LoadSettings();
 }
@@ -37,7 +31,7 @@ bool AppSerial::SerialSendData(const QByteArray &data)
 {
     if (!m_serial.isOpen())
     {
-        QMessageBox::warning(this, "错误", "串口未打开");
+        QMessageBox::warning(nullptr, "错误", "串口未打开");
         return false;
     }
 
@@ -48,10 +42,10 @@ bool AppSerial::SerialSendData(const QByteArray &data)
         return false;
     }
 
-    qDebug() << "发送HEX:" << data.toHex(' ').toUpper();
     emit sigSendData(data);
     return true;
 }
+
 
 // 接收数据
 void AppSerial::SerialRecv()
@@ -60,18 +54,84 @@ void AppSerial::SerialRecv()
     if (data.isEmpty())
         return;
 
+    m_frameTimer->start(20);
+
+    m_recvRawBuffer.append(data);
     m_recvBuffer.append(data);
-    if (m_autoFrame == true) // 如果开启了自动断帧
-    {
-        m_frameTimer->setInterval(m_timeout);
-        m_frameTimer->start();
-    }
-    else
-    {
-        emit sigRecvData(data);
-    }
+    ParseBuffer();
 }
 
+// 超时发给调试窗口
+void AppSerial::OnFrameTimeout()
+{
+    if (m_recvRawBuffer.isEmpty())
+        return;
+
+    emit sigRecvRawData(m_recvRawBuffer);
+
+    m_recvRawBuffer.clear();
+}
+
+// 解析数据
+void AppSerial::ParseBuffer()
+{
+    while (true) {
+        int headIndex = -1;
+        for (int i = 0; i < m_recvBuffer.size() - 1; ++i) { // 查找帧头
+            if ((uint8_t)m_recvBuffer[i] == FRAME_RX_FH_1 && (uint8_t)m_recvBuffer[i + 1] == FRAME_RX_FH_2) {
+                headIndex = i;
+                break;
+            }
+        }
+        if (headIndex == -1) { // 没有找到帧头清除缓存(避免异常数据导致无限增长)
+            if (m_recvBuffer.size() > 1024) {
+                qDebug() << "Buffer too large without header,clear";
+                m_recvBuffer.clear();
+            }
+            return; // 结束当前解析,等待更多数据
+        }
+
+        if (headIndex > 0) { //  删除帧头之前的数据(无效垃圾数据)
+            qDebug() << "Removed" << headIndex << "garbage bytes before header";
+            m_recvBuffer.remove(0, headIndex);
+        }
+
+        int tailIndex = -1; // 查找帧尾 0x0D 0x0A(需要从帧头后面查找,至少4字节:帧头2 + 帧尾2)
+        for (int i = 2; i < m_recvBuffer.size() - 1; ++i) {
+            if ((uint8_t)m_recvBuffer[i] == FRAME_TAIL_1 && (uint8_t)m_recvBuffer[i + 1] == FRAME_TAIL_2) {
+                tailIndex = i;
+                break;
+            }
+        }
+
+        if (tailIndex == -1) { // 找到了头部,但没找到帧尾,说明半包,等待更多数据
+            qDebug() << "Waiting for frame tail (0D 0A), buffer size:" << m_recvBuffer.size();
+            return;
+        }
+
+        // 提取完整帧(从帧头到帧尾,+2 包含两个帧尾字节)
+        QByteArray frame = m_recvBuffer.left(tailIndex + 2);
+
+        // 验证帧最小长度(至少 FE BB xx xx 0D 0A = 6字节)
+        if (frame.size() < 6) {
+            qDebug() << "Frame too short:" << frame.size() << "bytes, skip";
+            m_recvBuffer.remove(0, frame.size());
+            continue;
+        }
+
+        // 验证帧尾正确性(双重保险)
+        if ((uint8_t)frame[frame.size() - 2] != FRAME_TAIL_1 || (uint8_t)frame[frame.size() - 1] != FRAME_TAIL_2) {
+            qDebug() << "Frame tail mismatch, skip";
+            m_recvBuffer.remove(0, frame.size());
+            continue;
+        }
+
+        // 处理完整帧
+        emit sigRecvData(frame);
+        // 从缓冲区中移除已经成功解析的帧数据
+        m_recvBuffer.remove(0, frame.size());
+    }
+}
 
 // 刷新串口
 void AppSerial::RefreshPorts()
@@ -82,8 +142,24 @@ void AppSerial::RefreshPorts()
 
     for (const QSerialPortInfo &info : ports)
     {
-        ui->com->addItem(info.portName());
+        // 创建一个临时的串口对象来测试它是否被占用
+        QSerialPort testPort(info);
+
+        // 尝试以读写模式打开串口
+        if (testPort.open(QIODevice::ReadWrite))
+        {
+            // 如果成功打开,说明串口真正可用,加入下拉菜单
+            ui->com->addItem(info.portName());
+            // 测试完毕后记得关闭它,否则后面你的程序自己也用不了
+            testPort.close();
+        }
+        else
+        {
+            // 如果打开失败,说明串口可能被其他程序占用了,或者权限不足
+            qDebug() << "串口" << info.portName() << "正忙或无法打开,已跳过";
+        }
     }
+
     if (ui->com->count() > 0)
     {
         ui->com->setCurrentIndex(0);
@@ -93,7 +169,7 @@ void AppSerial::RefreshPorts()
     else
     {
         m_portName.clear();
-        qDebug() << "没有检测到串口";
+        qDebug() << "没有检测到任何当前闲置的可打开串口";
     }
 }
 
@@ -155,44 +231,6 @@ void AppSerial::on_switch_com_clicked()
     }
 }
 
-// 接收超时
-void AppSerial::RecvTimeout()
-{
-    if (m_recvBuffer.isEmpty())
-        return;
-
-    QByteArray frame = m_recvBuffer;
-    m_recvBuffer.clear();
-
-    qDebug() << "超时断帧HEX:" << frame.toHex(' ').toUpper();
-
-    emit sigRecvData(frame);
-}
-
-// 是否自动断帧
-void AppSerial::on_auto_check_stateChanged(int arg1)
-{
-    if (arg1 == Qt::Checked)
-    {
-        m_autoFrame = true;
-        qDebug() << "自动功能：开启";
-    }
-    else if (arg1 == Qt::Unchecked)
-    {
-        m_autoFrame = false;
-        qDebug() << "自动功能：关闭";
-    }
-    m_recvBuffer.clear();
-}
-
-// 下拉框选择"断帧超时时间"时触发这个函数
-void AppSerial::on_recv_timeout_activated(const QString &text)
-{
-    m_timeout= text.toInt(); // 字符串转为数字
-    m_frameTimer->setInterval(m_timeout);
-    qDebug() << "超时时间:" << m_timeout;
-}
-
 void AppSerial::SaveSettings()
 {
     QSettings settings("MyCompany", "MySerialApp");
@@ -218,13 +256,6 @@ void AppSerial::LoadSettings()
 
     if (ui->baudrate->findText(QString::number(m_baudRate)) >= 0) // 恢复波特率
         ui->baudrate->setCurrentText(QString::number(m_baudRate));
-
-    ui->auto_check->setChecked(m_autoFrame); // 恢复自动断帧
-
-    if (ui->recv_timeout->findText(QString::number(m_timeout)) >= 0)  // 恢复超时时间
-        ui->recv_timeout->setCurrentText(QString::number(m_timeout));
-
-    m_frameTimer->setInterval(m_timeout); // timer
 }
 
 void AppSerial::SetControlsEnabled(bool enabled)

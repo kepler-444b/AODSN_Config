@@ -15,7 +15,6 @@
 #include "app/app_set_addr.h"
 #include "app/app_set_config.h"
 #include "app/app_set_net.h"
-#include "app/app_protocol_set_addr.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -29,6 +28,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+
 protected:
     void closeEvent(QCloseEvent *event) override; // 重写关闭事件
 
@@ -38,12 +38,14 @@ private slots:
 
     void on_ver_triggered();
 
+    void on_readme_triggered();
+
 private:
     Ui::MainWindow *ui             = nullptr;
     AppSerial *SerialWidget        = nullptr;
     AppDisplay *DisplayWidget      = nullptr;
+
     AppSetAddr *SetAddrWidget      = nullptr;
-    AppProtocolSetAddr *m_protocol = nullptr;
     AppSetConfig *SetConfigWidget  = nullptr;
     AppSetNet* SetNetWidget        = nullptr;
 

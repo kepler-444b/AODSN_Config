@@ -57,27 +57,31 @@ public:
 
     void editScene(int id);
 
+public slots:
+    void on_send_config_result(bool success); // 用于接收 set_config 构造场景的结果
+
 signals:
-    void send_config(const QVector<panel_data_t>& panels, const QVector<led_data_t>& leds, const QVector<relay_data_t>& relays,uint8_t scene_id, QString name, bool &success);
+    // 发送配置给 set_config 构造场景
+    void send_config(const QVector<panel_data_t>& panels, const QVector<led_data_t>& leds, const QVector<relay_data_t>& relays,uint8_t scene_id, QString name);
 
 private slots:
     void on_spinBox_valueChanged(int arg1);
     void on_pushButton_clicked();
 
-
 private:
-    Ui::DialogSetScene *ui;
-
-    QVector<PanelInfo_t> m_panels;
-    QVector<ExtendInfo_t> m_extends;
-    scene_info_t m_scene_info;
-
     void populatePanels();
     void populateLeds();
     void populateRelays();
 
     uint8_t getAddrFromGroup(QGroupBox* group);
     void parseGroupBoxInfo(QGroupBox* group, uint8_t &addr, uint8_t &key_num, uint8_t &type);
+
+private:
+    Ui::DialogSetScene *ui;
+    bool m_sendSuccess = false;
+    QVector<PanelInfo_t> m_panels;
+    QVector<ExtendInfo_t> m_extends;
+    scene_info_t m_scene_info;
 
 };
 

@@ -79,6 +79,7 @@ bool ModelPanel6Key::eventFilter(QObject *obj, QEvent *event)
     };
 
     QMenu *bindOpenMenu = menu.addMenu("绑定开场景");
+//    bindOpenMenu->setStyleSheet("QMenu { menu-scrollable: 0; column-count: 20; }");
     addSceneActions(bindOpenMenu);
 
     QMenu *bindCloseMenu = menu.addMenu("绑定关场景");
@@ -104,7 +105,6 @@ bool ModelPanel6Key::eventFilter(QObject *obj, QEvent *event)
     else if (selected && selected->parentWidget() == bindOpenMenu)
     {
         uint8_t scene_id   = selected->data().toUInt();
-
         emit requestBindScene(m_addr, keyIndex, scene_id, true);
     }
 

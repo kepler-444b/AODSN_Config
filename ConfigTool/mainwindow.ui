@@ -47,13 +47,13 @@
       <property name="minimumSize">
        <size>
         <width>200</width>
-        <height>100</height>
+        <height>80</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
         <width>200</width>
-        <height>100</height>
+        <height>80</height>
        </size>
       </property>
      </widget>
@@ -63,7 +63,7 @@
       <property name="minimumSize">
        <size>
         <width>100</width>
-        <height>300</height>
+        <height>297</height>
        </size>
       </property>
       <property name="maximumSize">
@@ -88,22 +88,17 @@
       </property>
       <item>
        <property name="text">
-        <string>设置地址</string>
+        <string>弱电面板</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>设置配置</string>
+        <string>主机逻辑</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>设置网络</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>新建项目</string>
+        <string>主机信息</string>
        </property>
       </item>
      </widget>
@@ -162,7 +157,7 @@
      <x>0</x>
      <y>0</y>
      <width>1030</width>
-     <height>21</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -175,6 +170,7 @@
     <property name="title">
      <string>帮助</string>
     </property>
+    <addaction name="readme"/>
    </widget>
    <widget class="QMenu" name="about">
     <property name="title">
@@ -195,6 +191,14 @@
   <action name="ver">
    <property name="text">
     <string>软件版本</string>
+   </property>
+  </action>
+  <action name="readme">
+   <property name="text">
+    <string>使用说明</string>
+   </property>
+   <property name="toolTip">
+    <string>使用说明</string>
    </property>
   </action>
  </widget>

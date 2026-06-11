@@ -37,7 +37,7 @@ bool ModelRelayEx::eventFilter(QObject *obj, QEvent *event)
                 QAction *selected = menu.exec(e->globalPos()); // 弹出菜单
                 if (selected == deleteAction)
                 {
-//                    emit requestDelete(m_addr, m_type);  // 发出删除信号
+                    emit requestDelete(m_addr, m_type);  // 发出删除信号
                 }
                 return true;  // 拦截事件
             }

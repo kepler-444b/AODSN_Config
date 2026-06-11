@@ -5,8 +5,11 @@
 #include <qdebug.h>
 #include "app/app_serial.h"
 
+#define  FRAME_GET_INFO 0x01  // 获取设备信息
+#define  FRAME_SET_INFO 0x02  // 设置设备信息
 
-typedef struct wiz_NetInfo_t {
+typedef struct wiz_NetInfo_t
+{
     uint8_t mac[6];
     uint8_t ip[4];
     uint8_t sn[4];
@@ -22,7 +25,6 @@ typedef struct
     char devices[32];
     char key[128];
     char ver[16];
-
 } dev_packet_t;
 
 
@@ -36,7 +38,7 @@ public:
     bool GetInfoData(void);
     bool SetInfoData(const dev_packet_t &info);
 
-    QByteArray PackData(uint8_t cmdType, const QByteArray &payload);
+    QByteArray PackData(const uint8_t cmdType, const QByteArray &payload);
 
 signals:
     void sigUpdate(const dev_packet_t &info);
